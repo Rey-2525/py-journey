@@ -1,3 +1,4 @@
+import argparse
 import csv
 import urllib
 import urllib.request
@@ -8,18 +9,28 @@ from bs4 import BeautifulSoup
 USER_AGENT =  "(Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100)"
 headers = {"User-Agent": USER_AGENT}
 
+parser = argparse.ArgumentParser()
+parser.add_argument("html_path")
+parser.add_argument("--base-url", default=None)
+args = parser.parse_args()
+
 # 基準となるURL
 url = "https://quotes.toscrape.com/"
 
-# 相対URLに変換する
-relative_url = ""
-
-# 絶対URLに変換する
-url = urljoin(url, relative_url)
-
 html = urllib.request.urlopen(url)
 soup = BeautifulSoup(html, "html.parser")
-links = [url['href'] for url in soup.find_all("a", href=True)]
+anchors = soup.find_all("a", href=True)
+links = []
+for a in anchors:
+    href = a["href"]
+    text = a.get_text(strip=True)
+    if not href:
+        continue
+    if href.startswith("javascript:", "mailto","#"):
+        continue
+    
+base = args.base_url
+absolute = urljoin(base, href) if base else href
 
 ok = False
 try:
@@ -41,8 +52,8 @@ except URLError as e:
     print(f"URLエラーが発生しました。: {e}")
 if ok:
     with open("links.csv", "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, lineterminator="\n")
         for link in links:
-            writer.writerow([link])
+            writer.writerow(["text", "href"])
         save_path = "links.csv"
     print(f"{url}のリンクを{save_path}に保存しました。")
