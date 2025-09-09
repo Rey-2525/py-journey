@@ -4,15 +4,23 @@ import urllib
 import urllib.request
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 USER_AGENT =  "(Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100)"
 headers = {"User-Agent": USER_AGENT}
 
+# URLかどうかを判定する関数
+def is_url(s: str) -> bool:
+    scheme = urlparse(s).scheme.lower()
+    return scheme in ("http", "https")
+
+# htmlファイルの解析
 parser = argparse.ArgumentParser()
-parser.add_argument("html_path")
-parser.add_argument("--base-url", default=None)
+parser.add_argument("htmlfile", help="HTMLファイルのパス")
 args = parser.parse_args()
+with open(args.htmlfile, encoding="utf-8") as f:
+    soup = BeautifulSoup(f, "html.parser")
 
 # 基準となるURL
 url = "https://quotes.toscrape.com/"
@@ -28,10 +36,12 @@ for a in anchors:
         continue
     if href.startswith("javascript:", "mailto","#"):
         continue
-    
-base = args.base_url
+
+base_tag = soup.find("base", href=True)
+base = base_tag["href"] if base_tag else None
 absolute = urljoin(base, href) if base else href
 
+# URLでなければ基準URLからの相対パスを絶対パスに変換
 ok = False
 try:
     request = urllib.request.Request(url, headers=headers)
@@ -55,5 +65,6 @@ if ok:
         writer = csv.writer(f, lineterminator="\n")
         for link in links:
             writer.writerow(["text", "href"])
+            writer.writerow([text, absolute])
         save_path = "links.csv"
     print(f"{url}のリンクを{save_path}に保存しました。")

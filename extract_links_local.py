@@ -2,20 +2,26 @@ import bs4
 import csv
 import argparse
 from urllib.parse import urljoin
-
-base_url = "https;//example.com"
-absolute_url = urljoin(base_url, "/about")
-print(absolute_url)
+import requests
+import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument("htmlfile", help="HTMLファイルのパス")
+parser.add_argument("htmlfile", help="HTMLファイルのパスまたはURL")
 args = parser.parse_args()
-with open(args.html_path, encoding="utf-8") as f:
-    soup = bs4.BeautifulSoup(f, "html.parser")
+
+# URLかファイルパスかを判定
+if args.htmlfile.startswith("http://") or args.htmlfile.startswith("https://"):
+    response = requests.get(args.htmlfile)
+    response.raise_for_status()
+    html = response.text
+else:
+    with open(args.htmlfile, encoding="utf-8") as f:
+        html = f.read()
+
+soup = bs4.BeautifulSoup(html, "html.parser")
 links = soup.find_all("a")
 
 csvlist = []
-
 for link in links:
     text = link.text
     csvlist.append([text, link.get("href")])
