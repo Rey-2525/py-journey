@@ -39,15 +39,21 @@ def main():
     soup = BeautifulSoup(text, "html.parser")
     links = soup.find_all("a", href=True)
 
+    count = 0
     for a in links:
-        href = a["href"]
+        href = a.get("href")
         if not href:
             continue
-        text = a.get_text(strip=True)
-        if href.startswith(("javascript", "mailto", "#")):
+        if href.startswith(("javascript:", "mailto:", "#")):
             continue
+        link_text = a.get_text(strip=True)
+        print(f"{link_text} | {href}")
+        count += 1
+        if count == 5:
+            break
 
-    print(f"{text} | {href}")
+    if count == 0:
+        print("links=0")
 
 
 # 実行部分
