@@ -4,8 +4,8 @@ from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from urllib.parse import urljoin
 
-USERAgent = "(Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100)"
-headers = {"User-Agent": USERAgent}
+USER_AGENT = "(Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100)"
+headers = {"User-Agent": USER_AGENT}
 
 
 # URLかどうかを判定する関数
@@ -17,15 +17,23 @@ def is_url(s: str) -> bool:
 def read_text_from_url(url: str) -> str:
     import requests
 
-    resp = requests.get(url, timeout=(5, 15))
-    resp.raise_for_status()
-    return resp.text
+    try:
+        resp = requests.get(url, headers=headers, timeout=(5, 15))
+        resp.raise_for_status()
+        return resp.text
+    except requests.RequestException as e:
+        print(f"URLの取得に失敗しました: {e}")
+    return ""
 
 
 # ローカルファイルからテキストを読み込む
 def read_text_from_file(filepath: str) -> str:
-    with open(filepath, encoding="utf-8") as f:
-        return f.read()
+    try:
+        with open(filepath, encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        print(f"ファイルの読み込みに失敗しました: {e}")
+    return ""
 
 
 # パーサーで引数を処理する関数
@@ -83,20 +91,30 @@ def remove_duplicates(links):
 
 
 # リンクをCSVに保存する関数
-def save_links_to_csv(links, args):
-    with open(args.out, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
+def save_links_to_csv(links, outpath) -> int:
+    with open(outpath, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f, lineterminator="\n")
         writer.writerow(["text", "href"])
+        saved = 0
         for text, url in links:
             writer.writerow([text, url])
+            saved += 1
+    return saved
 
 
 def main():
-    args = parse_argument()
-    text, base_url = url_or_file(args)
-    links = extract_links(text, base_url)
-    unique_links = remove_duplicates(links)
-    save_links_to_csv(unique_links, args.out)
+    try:
+        args = parse_argument()
+        text, base_url = url_or_file(args)
+        if not text:
+            print("テキストの読み込みに失敗しました。")
+            return
+        links = extract_links(text, base_url)
+        unique_links = remove_duplicates(links)
+        saved = save_links_to_csv(unique_links, args.out)
+        print(f"抽出:{len(links)} 保存:{saved} → {args.out}")
+    except Exception as e:
+        print(f"予期しないエラーが発生しました: {e}")
 
 
 # 実行部分
